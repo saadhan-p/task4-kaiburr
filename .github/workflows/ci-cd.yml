@@ -47,13 +47,11 @@ jobs:
       # -----------------------------------------------------
       # 3. CD: Deploy to Kubernetes Cluster (Uses KUBE_CONFIG_DATA secret)
       # -----------------------------------------------------
-      - name: Setup Kubeconfig
-        # Decodes the KUBE_CONFIG_DATA secret to authenticate kubectl
+     - name: Setup Kubeconfig
         uses: azure/k8s-set-context@v4
         with:
           method: kubeconfig
-          kubeconfig: ${{ secrets.KUBE_CONFIG_DATA }} 
-
+          kubeconfig: ${{ secrets.KUBE_CONFIG_DATA }}
       - name: Deploy New Image to K8s
         run: |
           echo "Updating deployment ${{ env.K8S_DEPLOYMENT }} to image ${{ env.DOCKER_REPO }}:${{ env.TAG }}"
