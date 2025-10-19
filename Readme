@@ -1,0 +1,30 @@
+# 🚀 Task 4 – CI/CD Pipeline for Java Backend Deployment
+
+This task automates the full CI/CD process for a Java backend application using GitHub Actions. It includes building the application using Maven in a multi-stage Docker build, pushing the Docker image to Docker Hub, and deploying it to a Kubernetes cluster.
+
+---
+
+## 🎯 Objective
+
+- Automatically:
+  - Compile Java code using Maven.
+  - Build a Docker image using a multi-stage Dockerfile.
+  - Push the image to Docker Hub.
+  - Deploy it to a Kubernetes cluster using `kubectl`.
+
+---
+
+## ⚙️ Technologies Used
+
+| Component        | Tool/Service            |
+|------------------|-------------------------|
+| CI/CD Pipeline   | GitHub Actions          |
+| Build Tool       | Maven                   |
+| Containerization | Docker (Multi-stage)    |
+| Deployment       | Kubernetes (`kubectl`)  |
+| Container Registry | Docker Hub           |
+
+---
+
+## 📁 Project Structure
+
