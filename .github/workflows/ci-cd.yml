@@ -68,6 +68,4 @@ jobs:
           
           # Wait for the zero-downtime rollout to finish before marking success
           kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT }}
-```
-eof
 
