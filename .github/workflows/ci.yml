@@ -8,11 +8,11 @@ on:
   workflow_dispatch:
 
 env:
-  # --- Configuration Variables (Confirmed) ---
+  # --- Configuration Variables ---
   DOCKER_REPO: saadhanp/task-backend       # Your Docker Hub repository name
   K8S_DEPLOYMENT: task-api-deployment      # Name of the Deployment object in your YAML
   K8S_CONTAINER_NAME: task-api             # Name of the container inside the Deployment
-  MONGO_DEPLOYMENT_FILE: mongo-deployment.yaml # MongoDB manifest (assumed name)
+  MONGO_DEPLOYMENT_FILE: mongo-deployment.yaml # MongoDB manifest filename
   
   TAG: ${{ github.sha }}                   # Unique commit hash for image version
 
@@ -33,7 +33,6 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
           
       - name: Build and Push Docker Image
-        # Executes the multi-stage Dockerfile which handles Java compilation
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -44,32 +43,28 @@ jobs:
       # -----------------------------------------------------
       # 2. DEPLOYMENT TO KUBERNETES
       # -----------------------------------------------------
-      - name: Setup Kubeconfig
+      - name: Setup Kubeconfig File
         run: |
+          mkdir -p $HOME/.kube
           echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
 
-        # Uses the Base64 string from GitHub Secrets to connect to the cluster
+      - name: Set Kubernetes Context
         uses: azure/k8s-set-context@v4
         with:
           method: kubeconfig
-          kubeconfig: ${{ secrets.KUBE_CONFIG_DATA }} 
+          kubeconfig: $HOME/.kube/config 
 
       - name: Deploy and Update Services
         run: |
           echo "Applying MongoDB manifests..."
-          # Assuming you have a separate MongoDB deployment file
           kubectl apply -f ${{ env.MONGO_DEPLOYMENT_FILE }} 
           
-          echo "Applying Task API Deployment (development.yaml) and Service (service.yaml)..."
-          # Apply the primary Deployment and Service files
+          echo "Applying Task API Deployment and Service..."
           kubectl apply -f development.yaml
           kubectl apply -f service.yaml
           
-          # Update the running deployment to pull the new image tag
-          echo "Updating deployment ${{ env.K8S_DEPLOYMENT }} to image ${{ env.DOCKER_REPO }}:${{ env.TAG }}"
+          echo "Updating deployment ${{ env.K8S_DEPLOYMENT }} to use image ${{ env.DOCKER_REPO }}:${{ env.TAG }}"
           kubectl set image deployment/${{ env.K8S_DEPLOYMENT }} ${{ env.K8S_CONTAINER_NAME }}=${{ env.DOCKER_REPO }}:${{ env.TAG }}
           
-          # Wait for the zero-downtime rollout to finish before marking success
+          echo "Waiting for rollout to complete..."
           kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT }}
-
-
