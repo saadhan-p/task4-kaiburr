@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-api-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: task-api
+  template:
+    metadata:
+      labels:
+        app: task-api
+    spec:
+      containers:
+      - name: task-api
+        # IMPORTANT: Change this to your Docker Hub username!
+        image: your-dockerhub-username/task1-k8s:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: MONGO_URI
+          # This value tells our app how to find the MongoDB service inside Kubernetes.
+          value: "mongodb://mongodb-service:27017/kaiburr_db"

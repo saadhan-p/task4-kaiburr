@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-api-service
+spec:
+  selector:
+    app: task-api # This must match the 'app' label in your deployment.yaml
+  ports:
+  - protocol: TCP
+    port: 8080        # Port inside the cluster
+    targetPort: 8080  # Port on the pod
+  type: NodePort      # This makes the service accessible from your local machine.
