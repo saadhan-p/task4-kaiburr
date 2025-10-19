@@ -45,6 +45,9 @@ jobs:
       # 2. DEPLOYMENT TO KUBERNETES
       # -----------------------------------------------------
       - name: Setup Kubeconfig
+        run: |
+          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+
         # Uses the Base64 string from GitHub Secrets to connect to the cluster
         uses: azure/k8s-set-context@v4
         with:
