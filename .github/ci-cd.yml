@@ -1,56 +1,65 @@
-name: CI/CD Pipeline
+# .github/workflows/ci-cd.yml
+name: Java Backend CI/CD to Kubernetes
 
+# Triggers the workflow on every push to the main branch
 on:
   push:
     branches:
-      - main  # Trigger on push to the main branch
+      - master # Using 'master' based on your previous successful push branch
+  workflow_dispatch:
+
+env:
+  # --- Variables Confirmed by Your Deployment ---
+  DOCKER_REPO: saadhanp/task-backend       # Your Docker Hub repository
+  K8S_DEPLOYMENT: task1-app                 # Kubernetes Deployment Name
+  K8S_CONTAINER_NAME: task1-container       # Container Name confirmed from K8s (task1-container)
+  TAG: ${{ github.sha }}                   # Unique Git commit SHA for tagging
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest  # Use an Ubuntu runner for the job
-
+    runs-on: ubuntu-latest
     steps:
-      # Step 1: Checkout the code from the repository
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      # Step 2: Set up Docker Buildx for multi-platform support (optional)
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      # Step 3: Log in to Docker Hub
+      # -----------------------------------------------------
+      # 1. CD: Docker Login (Uses DOCKER_USERNAME/DOCKER_PASSWORD secrets)
+      # -----------------------------------------------------
       - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}  # Store in GitHub Secrets
-          password: ${{ secrets.DOCKER_PASSWORD }}  # Store in GitHub Secrets
-
-      # Step 4: Build the Docker image and push it to Docker Hub
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v3
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          
+      # -----------------------------------------------------
+      # 2. CD: Build and Push Image (Dockerfile handles Java build)
+      # -----------------------------------------------------
+      - name: Build and Push Docker Image
+        # This step executes the multi-stage Dockerfile (including the internal mvn build)
+        uses: docker/build-push-action@v5
         with:
-          context: .  # Current directory (root of the repo)
-          push: true  # Push the image to Docker Hub
-          tags: saadhanp/task-backend:${{ github.sha }}  # Tag image with the commit SHA
-          build-args: |
-            MAVEN_ARGS="-DskipTests"  # Skip tests for faster builds (optional)
+          context: .
+          push: true
+          # Tags the image with the unique commit SHA
+          tags: ${{ env.DOCKER_REPO }}:${{ env.TAG }}
+          file: ./Dockerfile 
 
-      # Step 5: Set up kubectl for Kubernetes deployment
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
+      # -----------------------------------------------------
+      # 3. CD: Deploy to Kubernetes Cluster (Uses KUBE_CONFIG_DATA secret)
+      # -----------------------------------------------------
+      - name: Setup Kubeconfig
+        # Decodes the KUBE_CONFIG_DATA secret to authenticate kubectl
+        uses: azure/k8s-set-context@v4
         with:
-          kubectl-version: 'latest'
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBE_CONFIG_DATA }} 
 
-      # Step 6: Authenticate kubectl using KUBE_CONFIG_DATA secret
-      - name: Set up Kubeconfig
-        run: echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
-
-      # Step 7: Deploy the new Docker image to Kubernetes
-      - name: Deploy to Kubernetes
+      - name: Deploy New Image to K8s
         run: |
-          kubectl set image deployment/task1-app task1-app=saadhanp/task-backend:${{ github.sha }} --record
-          kubectl rollout status deployment/task1-app
-
-      # Step 8: Ensure the deployment is successful
-      - name: Check Kubernetes Deployment Rollout Status
-        run: kubectl rollout status deployment/task1-app
+          echo "Updating deployment ${{ env.K8S_DEPLOYMENT }} to image ${{ env.DOCKER_REPO }}:${{ env.TAG }}"
+          
+          # Sets the new image tag and forces a rolling update
+          kubectl set image deployment/${{ env.K8S_DEPLOYMENT }} ${{ env.K8S_CONTAINER_NAME }}=${{ env.DOCKER_REPO }}:${{ env.TAG }}
+          
+          # Waits for the zero-downtime rollout to finish
+          kubectl rollout status deployment/${{ env.K8S_DEPLOYMENT }}
