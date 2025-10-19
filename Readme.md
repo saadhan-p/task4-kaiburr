@@ -4,7 +4,7 @@ This task automates the full CI/CD process for a Java backend application using 
 
 ---
 
-## 🎯 Objective
+## 🎯 Objective 
 
 - Automatically:
   - Compile Java code using Maven.
